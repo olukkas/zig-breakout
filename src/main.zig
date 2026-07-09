@@ -31,7 +31,7 @@ const Ball = struct {
         self.direction = ball_to_paddle.normalize();
     }
 
-    pub fn checkCollisionWithPaddle(self: *Ball, paddle_rect: *const rl.Rectangle) void {
+    pub fn checkCollisionWithPaddleAndReflect(self: *Ball, paddle_rect: *const rl.Rectangle) void {
         if (!rl.checkCollisionCircleRec(self.position, Ball.RADIUS, paddle_rect.*)) return;
         
         var collision_normal: rl.Vector2 = .zero();
@@ -115,7 +115,7 @@ pub fn main(_: std.process.Init) !void {
 
         const paddle_rect = rl.Rectangle{ .x = paddle.position_x, .y = Paddle.POSITION_Y, .width = Paddle.WIDTH, .height = Paddle.HEIGHT };
 
-        ball.checkCollisionWithPaddle(&paddle_rect);
+        ball.checkCollisionWithPaddleAndReflect(&paddle_rect);
 
         rl.beginDrawing();
         defer rl.endDrawing();
