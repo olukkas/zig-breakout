@@ -24,6 +24,12 @@ const Ball = struct {
 
     position: rl.Vector2 = .zero(),
     direction: rl.Vector2 = .zero(),
+
+    pub fn dropTowardsPaddle(self: *Ball, paddle: *const Paddle) void {
+        const paddle_middle = rl.Vector2{ .x = paddle.position_x + Paddle.WIDTH / 2, .y = Paddle.POSITION_Y };
+        const ball_to_paddle = paddle_middle.subtract(self.position);
+        self.direction = ball_to_paddle.normalize();
+    }
 };
 
 var started = false;
@@ -50,11 +56,11 @@ pub fn main(_: std.process.Init) !void {
     while (!rl.windowShouldClose()) {
         var dt: f32 = 0;
         if (!started) {
-            const cos: f32 = @floatCast(std.math.cos(rl.getTime()));
+            const cos: f32 = @floatCast(std.math.cos(rl.getTime()) * SCREEN_SIZE / 2.5);
             ball.position.x = (SCREEN_SIZE / 2) + cos;
 
             if (rl.isKeyPressed(.space)) {
-                ball.direction = .init(0, 1);
+                ball.dropTowardsPaddle(&paddle);
                 started = true;
             }
         } else {
