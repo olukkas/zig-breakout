@@ -14,6 +14,22 @@ const Paddle = struct {
 
     position_x: f32 = 0,
     move_velocity: f32 = 0,
+
+    pub fn handle_movement(self: *Paddle, delta: f32) void {
+        // resets each frame so it doesnot accumulate.
+        self.move_velocity = 0;
+
+        if (rl.isKeyDown(.left)) {
+            self.move_velocity -= Paddle.SPEED;
+        }
+
+        if (rl.isKeyDown(.right)) {
+            self.move_velocity += Paddle.SPEED;
+        }
+
+        self.position_x += self.move_velocity * delta;
+        self.position_x = std.math.clamp(self.position_x, 0, SCREEN_SIZE - Paddle.WIDTH);
+    }
 };
 
 const Ball = struct {
@@ -60,14 +76,43 @@ const Ball = struct {
         }
 
     }
+
+    pub fn reflectOnWalls(self: *Ball) void {
+        const hits_right_wall = self.position.x + Ball.RADIUS > SCREEN_SIZE;
+        if (hits_right_wall) {
+            self.position.x = SCREEN_SIZE - Ball.RADIUS;
+            self.direction = reflect(self.direction, .init(-1, 0));
+        }
+
+        const hits_left_wall = self.position.x - Ball.RADIUS < 0;
+        if (hits_left_wall) {
+            self.position.x = Ball.RADIUS;
+            self.direction = reflect(self.direction, .init(1, 0));
+        }
+
+        const hits_top_wall = self.position.y - Ball.RADIUS < 0;
+        if (hits_top_wall) {
+            self.position.y = Ball.RADIUS;
+            self.direction = reflect(self.direction, .init(0, 1));
+            
+        }
+
+        // TODO: implement game over audio.
+        const hits_bottom_wall = self.position.y > SCREEN_SIZE + Ball.RADIUS * 10;
+        if (hits_bottom_wall and !game_over) {
+            game_over = true;
+        }
+    }
 };
 
-var started = false;
+var started: bool = undefined;
+var game_over: bool = undefined;
 
 fn restart(paddle: *Paddle, ball: *Ball) void {
     paddle.position_x = SCREEN_SIZE / 2 - Paddle.WIDTH / 2;
     ball.position = .init(SCREEN_SIZE / 2, Ball.START_Y);
     started = false;
+    game_over = false;
 }
 
 fn reflect(dir: rl.Vector2, normal: rl.Vector2) rl.Vector2 {
@@ -104,19 +149,9 @@ pub fn main(_: std.process.Init) !void {
 
         ball.position.x = ball.position.x + (ball.direction.x * Ball.SPEED * dt);
         ball.position.y = ball.position.y + (ball.direction.y * Ball.SPEED * dt);
-        paddle.move_velocity = 0;
+        ball.reflectOnWalls();
 
-        if (rl.isKeyDown(.left)) {
-            paddle.move_velocity -= Paddle.SPEED;
-        }
-
-        if (rl.isKeyDown(.right)) {
-            paddle.move_velocity += Paddle.SPEED;
-        }
-
-        paddle.position_x += paddle.move_velocity * dt;
-        paddle.position_x = std.math.clamp(paddle.position_x, 0, SCREEN_SIZE - Paddle.WIDTH);
-
+        paddle.handle_movement(dt);
         const paddle_rect = rl.Rectangle{ .x = paddle.position_x, .y = Paddle.POSITION_Y, .width = Paddle.WIDTH, .height = Paddle.HEIGHT };
 
         ball.checkCollisionWithPaddleAndReflect(&paddle_rect);
