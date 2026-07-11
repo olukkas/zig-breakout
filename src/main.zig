@@ -31,30 +31,34 @@ const Ball = struct {
         self.direction = ball_to_paddle.normalize();
     }
 
-    pub fn checkCollisionWithPaddleAndReflect(self: *Ball, paddle_rect: *const rl.Rectangle) void {
-        if (!rl.checkCollisionCircleRec(self.position, Ball.RADIUS, paddle_rect.*)) return;
+    pub fn checkCollisionWithPaddleAndReflect(self: *Ball, paddle: *const rl.Rectangle) void {
+        // early return if no collision has happend.
+        if (!rl.checkCollisionCircleRec(self.position, Ball.RADIUS, paddle.*)) return;
         
         var collision_normal: rl.Vector2 = .zero();
 
-        if (self.position.y < paddle_rect.y + paddle_rect.height) {
+        if (self.position.y < paddle.y + paddle.height) {
             collision_normal = collision_normal.add(.init(0, -1));
-            self.position.y = paddle_rect.y - Ball.RADIUS;
+            self.position.y = paddle.y - Ball.RADIUS;
         }
 
-        if (self.position.y > paddle_rect.y + paddle_rect.height) {
+        if (self.position.y > paddle.y + paddle.height) {
             collision_normal = collision_normal.add(.init(0, 1));
-            self.position.y = paddle_rect.y + paddle_rect.height + Ball.RADIUS;
+            self.position.y = paddle.y + paddle.height + Ball.RADIUS;
         }
 
-        if (self.position.x < paddle_rect.x) {
+        if (self.position.x < paddle.x) {
             collision_normal = collision_normal.add(.init(-1, 0));
         }
 
-        if (self.position.x > paddle_rect.x + paddle_rect.width) {
+        if (self.position.x > paddle.x + paddle.width) {
             collision_normal = collision_normal.add(.init(1, 0));
         }
 
-        self.position = reflect(self.position, collision_normal);
+        if (collision_normal.x != 0 or collision_normal.y != 0) {
+            self.direction = reflect(self.direction, collision_normal);
+        }
+
     }
 };
 
