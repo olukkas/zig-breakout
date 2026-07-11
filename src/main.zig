@@ -47,7 +47,7 @@ const Ball = struct {
         self.direction = ball_to_paddle.normalize();
     }
 
-    pub fn checkCollisionWithPaddleAndReflect(self: *Ball, paddle: *const rl.Rectangle) void {
+    pub fn reflectWithPaddleOnCollision(self: *Ball, paddle: *const rl.Rectangle) void {
         // early return if no collision has happend.
         if (!rl.checkCollisionCircleRec(self.position, Ball.RADIUS, paddle.*)) return;
         
@@ -77,7 +77,10 @@ const Ball = struct {
 
     }
 
-    pub fn reflectOnWalls(self: *Ball) void {
+    pub fn reflectOnWallsWhenCollision(self: *Ball, dt: f32) void {
+        self.position.x = self.position.x + (self.direction.x * Ball.SPEED * dt);
+        self.position.y = self.position.y + (self.direction.y * Ball.SPEED * dt);
+
         const hits_right_wall = self.position.x + Ball.RADIUS > SCREEN_SIZE;
         if (hits_right_wall) {
             self.position.x = SCREEN_SIZE - Ball.RADIUS;
@@ -147,14 +150,12 @@ pub fn main(_: std.process.Init) !void {
             dt = rl.getFrameTime();
         }
 
-        ball.position.x = ball.position.x + (ball.direction.x * Ball.SPEED * dt);
-        ball.position.y = ball.position.y + (ball.direction.y * Ball.SPEED * dt);
-        ball.reflectOnWalls();
-
+        ball.reflectOnWallsWhenCollision(dt);
         paddle.handle_movement(dt);
+
         const paddle_rect = rl.Rectangle{ .x = paddle.position_x, .y = Paddle.POSITION_Y, .width = Paddle.WIDTH, .height = Paddle.HEIGHT };
 
-        ball.checkCollisionWithPaddleAndReflect(&paddle_rect);
+        ball.reflectWithPaddleOnCollision(&paddle_rect);
 
         rl.beginDrawing();
         defer rl.endDrawing();
