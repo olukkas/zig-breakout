@@ -20,15 +20,15 @@ const Paddle = struct {
         self.move_velocity = 0;
 
         if (rl.isKeyDown(.left)) {
-            self.move_velocity -= Paddle.SPEED;
+            self.move_velocity -= SPEED;
         }
 
         if (rl.isKeyDown(.right)) {
-            self.move_velocity += Paddle.SPEED;
+            self.move_velocity += SPEED;
         }
 
         self.position_x += self.move_velocity * delta;
-        self.position_x = std.math.clamp(self.position_x, 0, SCREEN_SIZE - Paddle.WIDTH);
+        self.position_x = std.math.clamp(self.position_x, 0, SCREEN_SIZE - WIDTH);
     }
 };
 
@@ -49,18 +49,18 @@ const Ball = struct {
 
     pub fn reflectWithPaddleOnCollision(self: *Ball, paddle: *const rl.Rectangle) void {
         // early return if no collision has happend.
-        if (!rl.checkCollisionCircleRec(self.position, Ball.RADIUS, paddle.*)) return;
-        
+        if (!rl.checkCollisionCircleRec(self.position, RADIUS, paddle.*)) return;
+
         var collision_normal: rl.Vector2 = .zero();
 
         if (self.position.y < paddle.y + paddle.height) {
             collision_normal = collision_normal.add(.init(0, -1));
-            self.position.y = paddle.y - Ball.RADIUS;
+            self.position.y = paddle.y - RADIUS;
         }
 
         if (self.position.y > paddle.y + paddle.height) {
             collision_normal = collision_normal.add(.init(0, 1));
-            self.position.y = paddle.y + paddle.height + Ball.RADIUS;
+            self.position.y = paddle.y + paddle.height + RADIUS;
         }
 
         if (self.position.x < paddle.x) {
@@ -74,7 +74,12 @@ const Ball = struct {
         if (collision_normal.x != 0 or collision_normal.y != 0) {
             self.direction = reflect(self.direction, collision_normal);
         }
+    }
 
+    // TODO: implement reflection logic for blocks
+    // when we implement then.
+    pub fn reflectOnBlocksOnCollision(self: *Ball) void {
+        _ = self;
     }
 
     pub fn reflectOnWallsWhenCollision(self: *Ball, dt: f32) void {
@@ -97,7 +102,6 @@ const Ball = struct {
         if (hits_top_wall) {
             self.position.y = Ball.RADIUS;
             self.direction = reflect(self.direction, .init(0, 1));
-            
         }
 
         // TODO: implement game over audio.
@@ -156,6 +160,7 @@ pub fn main(_: std.process.Init) !void {
         const paddle_rect = rl.Rectangle{ .x = paddle.position_x, .y = Paddle.POSITION_Y, .width = Paddle.WIDTH, .height = Paddle.HEIGHT };
 
         ball.reflectWithPaddleOnCollision(&paddle_rect);
+        ball.reflectOnBlocksOnCollision();
 
         rl.beginDrawing();
         defer rl.endDrawing();
