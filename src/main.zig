@@ -77,8 +77,56 @@ const Ball = struct {
     }
 
     pub fn reflectOnCollisionWithBlocks(self: *Ball, wall: *BlockWall) void {
-        _ = self;
-        _ = wall;
+        outer: for (0..BlockWall.BLOCK_NUM_X - 1) |x| {
+            for (0..BlockWall.BLOCK_NUM_Y - 1) |y| {
+                if (!wall.blocks[x][y]) {
+                    continue;
+                }
+
+                const block_rect = rl.Rectangle{
+                    .x = @floatFromInt(20 + x * BlockWall.BLOCK_WIDTH),
+                    .y = @floatFromInt(40 + y * BlockWall.BLOCK_HEIGHT),
+                    .width = BlockWall.BLOCK_WIDTH,
+                    .height = BlockWall.BLOCK_HEIGHT,
+                };
+
+                if (rl.checkCollisionCircleRec(self.position, Ball.RADIUS, block_rect)) {
+                    var collision_normal: rl.Vector2 = .zero();
+
+                    if (self.position.y < block_rect.y) {
+                        collision_normal = collision_normal.add(.init(0, -1));
+                    }
+
+                    if (self.position.y > block_rect.y + block_rect.height) {
+                        collision_normal = collision_normal.add(.init(0, 1));
+                    }
+
+                    if (self.position.x > block_rect.x + block_rect.width) {
+                        collision_normal = collision_normal.add(.init(1, 0));
+                    }
+
+                    const x_normal: usize = @trunc(@abs(collision_normal.x));
+                    const y_normal: usize = @trunc(@abs(collision_normal.y));
+                    
+                    if (wall.blockExists(x + x_normal, y)) {
+                        collision_normal.x = 0;
+                    }
+
+                    if (wall.blockExists(x, y + y_normal)) {
+                        collision_normal.y = 0;
+                    }
+
+                    if (collision_normal.x != 0 or collision_normal.y != 0) {
+                        self.direction = reflect(self.direction, collision_normal);
+                    }
+
+                    wall.blocks[x][y] = false;
+                    const row_color = BlockWall.ROW_COLORS[y];
+                    score += BlockWall.COLOR_SCORE.get(row_color);
+                    break :outer;
+                }
+            }
+        }
     }
 
     pub fn reflectOnWallsWhenCollision(self: *Ball, dt: f32) void {
@@ -103,8 +151,7 @@ const Ball = struct {
             self.direction = reflect(self.direction, .init(0, 1));
         }
 
-        // TODO: implement game over audio.
-        const hits_bottom_wall = self.position.y > SCREEN_SIZE + RADIUS * 10;
+         const hits_bottom_wall = self.position.y > SCREEN_SIZE + RADIUS * 10;
         if (hits_bottom_wall and !game_over) {
             game_over = true;
         }
@@ -160,7 +207,7 @@ const BlockWall = struct {
         }
     }
 
-    pub fn blockExists(self: *BlockWall, x: i32, y: i32) bool {
+    pub fn blockExists(self: *BlockWall, x: usize, y: usize) bool {
         if (x < 0 or y < 0 or x > BLOCK_NUM_X or y > BLOCK_NUM_Y) return false;
         return self.blocks[x][y];
     }
@@ -185,8 +232,8 @@ fn reflect(dir: rl.Vector2, normal: rl.Vector2) rl.Vector2 {
 }
 
 fn drawBlocks(wall: *BlockWall) void {
-    for (0..BlockWall.BLOCK_NUM_X) |x| {
-        for (0..BlockWall.BLOCK_NUM_Y) |y| {
+    for (0..BlockWall.BLOCK_NUM_X - 1) |x| {
+        for (0..BlockWall.BLOCK_NUM_Y - 1) |y| {
             if (!wall.blocks[x][y]) {
                 continue;
             }
@@ -207,8 +254,8 @@ fn drawBlocks(wall: *BlockWall) void {
             rl.drawRectangleRec(block_rect, color);
             rl.drawLineEx(top_left, top_right, 1, .init(255, 255, 150, 100));
             rl.drawLineEx(bottom_left, bottom_right, 1, .init(255, 255, 150, 100));
-			rl.drawLineEx(top_right, bottom_right, 1, .init(0, 0, 50, 100));
-			rl.drawLineEx(bottom_left, bottom_right, 1, .init(0, 0, 50, 100));
+            rl.drawLineEx(top_right, bottom_right, 1, .init(0, 0, 50, 100));
+            rl.drawLineEx(bottom_left, bottom_right, 1, .init(0, 0, 50, 100));
         }
     }
 }
@@ -262,6 +309,5 @@ pub fn main(_: std.process.Init) !void {
         rl.drawRectangleRec(paddle_rect, Paddle.COLOR);
         rl.drawCircleV(ball.position, Ball.RADIUS, Ball.COLOR);
         drawBlocks(&block_wall);
-
     }
 }
