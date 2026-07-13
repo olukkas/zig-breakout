@@ -76,55 +76,141 @@ const Ball = struct {
         }
     }
 
-    // TODO: implement reflection logic for blocks
-    // when we implement then.
-    pub fn reflectOnBlocksOnCollision(self: *Ball) void {
+    pub fn reflectOnCollisionWithBlocks(self: *Ball, wall: *BlockWall) void {
         _ = self;
+        _ = wall;
     }
 
     pub fn reflectOnWallsWhenCollision(self: *Ball, dt: f32) void {
-        self.position.x = self.position.x + (self.direction.x * Ball.SPEED * dt);
-        self.position.y = self.position.y + (self.direction.y * Ball.SPEED * dt);
+        self.position.x = self.position.x + (self.direction.x * SPEED * dt);
+        self.position.y = self.position.y + (self.direction.y * SPEED * dt);
 
-        const hits_right_wall = self.position.x + Ball.RADIUS > SCREEN_SIZE;
+        const hits_right_wall = self.position.x + RADIUS > SCREEN_SIZE;
         if (hits_right_wall) {
-            self.position.x = SCREEN_SIZE - Ball.RADIUS;
+            self.position.x = SCREEN_SIZE - RADIUS;
             self.direction = reflect(self.direction, .init(-1, 0));
         }
 
-        const hits_left_wall = self.position.x - Ball.RADIUS < 0;
+        const hits_left_wall = self.position.x - RADIUS < 0;
         if (hits_left_wall) {
-            self.position.x = Ball.RADIUS;
+            self.position.x = RADIUS;
             self.direction = reflect(self.direction, .init(1, 0));
         }
 
-        const hits_top_wall = self.position.y - Ball.RADIUS < 0;
+        const hits_top_wall = self.position.y - RADIUS < 0;
         if (hits_top_wall) {
-            self.position.y = Ball.RADIUS;
+            self.position.y = RADIUS;
             self.direction = reflect(self.direction, .init(0, 1));
         }
 
         // TODO: implement game over audio.
-        const hits_bottom_wall = self.position.y > SCREEN_SIZE + Ball.RADIUS * 10;
+        const hits_bottom_wall = self.position.y > SCREEN_SIZE + RADIUS * 10;
         if (hits_bottom_wall and !game_over) {
             game_over = true;
         }
     }
 };
 
+const BlockWall = struct {
+    const BLOCK_NUM_X = 10;
+    const BLOCK_NUM_Y = 8;
+    const BLOCK_WIDTH = 28;
+    const BLOCK_HEIGHT = 10;
+
+    const COLOR_VALUES: std.enums.EnumArray(Color, rl.Color) = .init(.{
+        .Yellow = rl.Color{ .r = 253, .g = 249, .b = 150, .a = 255 },
+        .Green = rl.Color{ .r = 180, .g = 254, .b = 190, .a = 255 },
+        .Purple = rl.Color{ .r = 170, .g = 120, .b = 250, .a = 255 },
+        .Red = rl.Color{ .r = 250, .g = 90, .b = 82, .a = 255 },
+    });
+
+    const COLOR_SCORE = std.enums.EnumArray(Color, i32).init(.{
+        .Yellow = 2,
+        .Green = 4,
+        .Purple = 6,
+        .Red = 8,
+    });
+
+    const ROW_COLORS: [BLOCK_NUM_Y]Color = .{
+        .Red,
+        .Red,
+        .Purple,
+        .Purple,
+        .Green,
+        .Green,
+        .Yellow,
+        .Yellow,
+    };
+
+    pub const Color = enum { Yellow, Green, Purple, Red };
+
+    blocks: [BLOCK_NUM_X][BLOCK_NUM_Y]bool,
+
+    pub fn init() BlockWall {
+        const rows: [BLOCK_NUM_Y]bool = .{false} ** BLOCK_NUM_Y;
+        const blocks: [BLOCK_NUM_X][BLOCK_NUM_Y]bool = .{rows} ** BLOCK_NUM_X;
+        return .{ .blocks = blocks };
+    }
+
+    pub fn initAllBlocks(self: *BlockWall) void {
+        for (0..BLOCK_NUM_X) |x| {
+            for (0..BLOCK_NUM_Y) |y| {
+                self.blocks[x][y] = true;
+            }
+        }
+    }
+
+    pub fn blockExists(self: *BlockWall, x: i32, y: i32) bool {
+        if (x < 0 or y < 0 or x > BLOCK_NUM_X or y > BLOCK_NUM_Y) return false;
+        return self.blocks[x][y];
+    }
+};
+
 var started: bool = undefined;
 var game_over: bool = undefined;
+var score: i32 = 0;
 
-fn restart(paddle: *Paddle, ball: *Ball) void {
+fn restart(paddle: *Paddle, ball: *Ball, blocks: *BlockWall) void {
     paddle.position_x = SCREEN_SIZE / 2 - Paddle.WIDTH / 2;
     ball.position = .init(SCREEN_SIZE / 2, Ball.START_Y);
     started = false;
     game_over = false;
+    score = 0;
+    blocks.initAllBlocks();
 }
 
 fn reflect(dir: rl.Vector2, normal: rl.Vector2) rl.Vector2 {
     const new_dir: rl.Vector2 = dir.reflect(normal.normalize());
     return new_dir.normalize();
+}
+
+fn drawBlocks(wall: *BlockWall) void {
+    for (0..BlockWall.BLOCK_NUM_X) |x| {
+        for (0..BlockWall.BLOCK_NUM_Y) |y| {
+            if (!wall.blocks[x][y]) {
+                continue;
+            }
+
+            const block_rect = rl.Rectangle{
+                .x = @floatFromInt(20 + x * BlockWall.BLOCK_WIDTH),
+                .y = @floatFromInt(40 + y * BlockWall.BLOCK_HEIGHT),
+                .width = BlockWall.BLOCK_WIDTH,
+                .height = BlockWall.BLOCK_HEIGHT,
+            };
+
+            const top_left: rl.Vector2 = .init(block_rect.x, block_rect.y);
+            const top_right: rl.Vector2 = .init(block_rect.x + block_rect.width, block_rect.y);
+            const bottom_left: rl.Vector2 = .init(block_rect.x, block_rect.y + block_rect.height);
+            const bottom_right: rl.Vector2 = .init(block_rect.x + block_rect.width, block_rect.y + block_rect.height);
+
+            const color = BlockWall.COLOR_VALUES.get(BlockWall.ROW_COLORS[y]);
+            rl.drawRectangleRec(block_rect, color);
+            rl.drawLineEx(top_left, top_right, 1, .init(255, 255, 150, 100));
+            rl.drawLineEx(bottom_left, bottom_right, 1, .init(255, 255, 150, 100));
+			rl.drawLineEx(top_right, bottom_right, 1, .init(0, 0, 50, 100));
+			rl.drawLineEx(bottom_left, bottom_right, 1, .init(0, 0, 50, 100));
+        }
+    }
 }
 
 pub fn main(_: std.process.Init) !void {
@@ -137,8 +223,9 @@ pub fn main(_: std.process.Init) !void {
 
     var paddle = Paddle{};
     var ball = Ball{};
+    var block_wall = BlockWall.init();
 
-    restart(&paddle, &ball);
+    restart(&paddle, &ball, &block_wall);
 
     while (!rl.windowShouldClose()) {
         var dt: f32 = 0;
@@ -160,7 +247,7 @@ pub fn main(_: std.process.Init) !void {
         const paddle_rect = rl.Rectangle{ .x = paddle.position_x, .y = Paddle.POSITION_Y, .width = Paddle.WIDTH, .height = Paddle.HEIGHT };
 
         ball.reflectWithPaddleOnCollision(&paddle_rect);
-        ball.reflectOnBlocksOnCollision();
+        ball.reflectOnCollisionWithBlocks(&block_wall);
 
         rl.beginDrawing();
         defer rl.endDrawing();
@@ -174,5 +261,7 @@ pub fn main(_: std.process.Init) !void {
 
         rl.drawRectangleRec(paddle_rect, Paddle.COLOR);
         rl.drawCircleV(ball.position, Ball.RADIUS, Ball.COLOR);
+        drawBlocks(&block_wall);
+
     }
 }
