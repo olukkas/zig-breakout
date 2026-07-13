@@ -107,7 +107,7 @@ const Ball = struct {
 
                     const x_normal: usize = @trunc(@abs(collision_normal.x));
                     const y_normal: usize = @trunc(@abs(collision_normal.y));
-                    
+
                     if (wall.blockExists(x + x_normal, y)) {
                         collision_normal.x = 0;
                     }
@@ -151,7 +151,7 @@ const Ball = struct {
             self.direction = reflect(self.direction, .init(0, 1));
         }
 
-         const hits_bottom_wall = self.position.y > SCREEN_SIZE + RADIUS * 10;
+        const hits_bottom_wall = self.position.y > SCREEN_SIZE + RADIUS * 10;
         if (hits_bottom_wall and !game_over) {
             game_over = true;
         }
@@ -284,6 +284,10 @@ pub fn main(_: std.process.Init) !void {
                 ball.dropTowardsPaddle(&paddle);
                 started = true;
             }
+        } else if (game_over) {
+            if (rl.isKeyPressed(.space)) {
+                restart(&paddle, &ball, &block_wall);
+            }
         } else {
             dt = rl.getFrameTime();
         }
@@ -309,5 +313,30 @@ pub fn main(_: std.process.Init) !void {
         rl.drawRectangleRec(paddle_rect, Paddle.COLOR);
         rl.drawCircleV(ball.position, Ball.RADIUS, Ball.COLOR);
         drawBlocks(&block_wall);
+
+        var score_buf: [16]u8 = undefined;
+        const score_str = try std.fmt.bufPrintSentinel(&score_buf, "Score: {}", .{score}, 0);
+        rl.drawText(score_str, 5, 5, 10, .white);
+
+        if (!started) {
+            const start_text = "Start: SPACE";
+            const start_text_width = rl.measureText(start_text, 15);
+
+            rl.drawText(start_text, @divTrunc(SCREEN_SIZE, 2) - @divTrunc(start_text_width, 2), Ball.START_Y - 30, 15, .white);
+        }
+
+        if (game_over) {
+            var game_over_buffer: [50]u8 = undefined;
+            const game_over_text = try std.fmt.bufPrintSentinel(&game_over_buffer, "Score: {d}. Reset: SPACE", .{score}, 0);
+            const game_over_text_width = rl.measureText(game_over_text, 15);
+
+            rl.drawText(
+                game_over_text,
+                @divTrunc(SCREEN_SIZE, 2) - @divTrunc(game_over_text_width, 2),
+                Ball.START_Y - 30,
+                15,
+                .red
+            );
+        }
     }
 }
