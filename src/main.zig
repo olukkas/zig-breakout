@@ -47,7 +47,7 @@ const Ball = struct {
         self.direction = ball_to_paddle.normalize();
     }
 
-    pub fn reflectWithPaddleOnCollision(self: *Ball, paddle: *const rl.Rectangle) void {
+    pub fn reflectWithPaddleOnCollision(self: *Ball, paddle: *const rl.Rectangle, sound: rl.Sound) void {
         // early return if no collision has happend.
         if (!rl.checkCollisionCircleRec(self.position, RADIUS, paddle.*)) return;
 
@@ -74,9 +74,11 @@ const Ball = struct {
         if (collision_normal.x != 0 or collision_normal.y != 0) {
             self.direction = reflect(self.direction, collision_normal);
         }
+
+        rl.playSound(sound);
     }
 
-    pub fn reflectOnCollisionWithBlocks(self: *Ball, wall: *BlockWall) void {
+    pub fn reflectOnCollisionWithBlocks(self: *Ball, wall: *BlockWall, sound: rl.Sound) void {
         outer: for (0..BlockWall.BLOCK_NUM_X - 1) |x| {
             for (0..BlockWall.BLOCK_NUM_Y - 1) |y| {
                 if (!wall.blocks[x][y]) {
@@ -123,13 +125,14 @@ const Ball = struct {
                     wall.blocks[x][y] = false;
                     const row_color = BlockWall.ROW_COLORS[y];
                     score += BlockWall.COLOR_SCORE.get(row_color);
+                    rl.playSound(sound);
                     break :outer;
                 }
             }
         }
     }
 
-    pub fn reflectOnWallsWhenCollision(self: *Ball, dt: f32) void {
+    pub fn reflectOnWallsWhenCollision(self: *Ball, dt: f32, sound: rl.Sound) void {
         self.position.x = self.position.x + (self.direction.x * SPEED * dt);
         self.position.y = self.position.y + (self.direction.y * SPEED * dt);
 
@@ -154,6 +157,7 @@ const Ball = struct {
         const hits_bottom_wall = self.position.y > SCREEN_SIZE + RADIUS * 10;
         if (hits_bottom_wall and !game_over) {
             game_over = true;
+            rl.playSound(sound);
         }
     }
 };
@@ -266,7 +270,17 @@ pub fn main(_: std.process.Init) !void {
     rl.initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "breakout");
     defer rl.closeWindow();
 
+    rl.initAudioDevice();
+    defer rl.closeAudioDevice();
+
     rl.setTargetFPS(120);
+
+    const ball_texture = try rl.loadTexture("resource\\ball.png");
+    const paddle_texture = try rl.loadTexture("resource\\paddle.png");
+
+    const block_hit_sound = try rl.loadSound("resource\\hit_block.wav");
+    const hit_paddle_sound = try rl.loadSound("resource\\hit_paddle.wav");
+    const game_over_sound = try rl.loadSound("resource\\game_over.wav");
 
     var paddle = Paddle{};
     var ball = Ball{};
@@ -292,13 +306,13 @@ pub fn main(_: std.process.Init) !void {
             dt = rl.getFrameTime();
         }
 
-        ball.reflectOnWallsWhenCollision(dt);
+        ball.reflectOnWallsWhenCollision(dt, game_over_sound);
         paddle.handle_movement(dt);
 
         const paddle_rect = rl.Rectangle{ .x = paddle.position_x, .y = Paddle.POSITION_Y, .width = Paddle.WIDTH, .height = Paddle.HEIGHT };
 
-        ball.reflectWithPaddleOnCollision(&paddle_rect);
-        ball.reflectOnCollisionWithBlocks(&block_wall);
+        ball.reflectWithPaddleOnCollision(&paddle_rect, hit_paddle_sound);
+        ball.reflectOnCollisionWithBlocks(&block_wall, block_hit_sound);
 
         rl.beginDrawing();
         defer rl.endDrawing();
@@ -310,8 +324,8 @@ pub fn main(_: std.process.Init) !void {
         camera.begin();
         defer camera.end();
 
-        rl.drawRectangleRec(paddle_rect, Paddle.COLOR);
-        rl.drawCircleV(ball.position, Ball.RADIUS, Ball.COLOR);
+        rl.drawTextureV(paddle_texture, .init(paddle.position_x, Paddle.POSITION_Y), .white);
+        rl.drawTextureV(ball_texture, ball.position.subtract(.init(Ball.RADIUS, Ball.RADIUS)), .white);
         drawBlocks(&block_wall);
 
         var score_buf: [16]u8 = undefined;
