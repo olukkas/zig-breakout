@@ -168,21 +168,21 @@ const BlockWall = struct {
     const BLOCK_WIDTH = 28;
     const BLOCK_HEIGHT = 10;
 
-    const COLOR_VALUES: std.enums.EnumArray(Color, rl.Color) = .init(.{
+    const COLOR_VALUES: std.enums.EnumArray(ColorOption, rl.Color) = .init(.{
         .Yellow = rl.Color{ .r = 253, .g = 249, .b = 150, .a = 255 },
         .Green = rl.Color{ .r = 180, .g = 254, .b = 190, .a = 255 },
         .Purple = rl.Color{ .r = 170, .g = 120, .b = 250, .a = 255 },
         .Red = rl.Color{ .r = 250, .g = 90, .b = 82, .a = 255 },
     });
 
-    const COLOR_SCORE = std.enums.EnumArray(Color, i32).init(.{
+    const COLOR_SCORE = std.enums.EnumArray(ColorOption, i32).init(.{
         .Yellow = 2,
         .Green = 4,
         .Purple = 6,
         .Red = 8,
     });
 
-    const ROW_COLORS: [BLOCK_NUM_Y]Color = .{
+    const ROW_COLORS: [BLOCK_NUM_Y]ColorOption = .{
         .Red,
         .Red,
         .Purple,
@@ -193,7 +193,7 @@ const BlockWall = struct {
         .Yellow,
     };
 
-    pub const Color = enum { Yellow, Green, Purple, Red };
+    pub const ColorOption = enum { Yellow, Green, Purple, Red };
 
     blocks: [BLOCK_NUM_X][BLOCK_NUM_Y]bool,
 
